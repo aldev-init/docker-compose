@@ -1,0 +1,102 @@
+version: '3.8'
+
+# create network
+networks:
+  kong-net:
+    name: kong-net
+    driver: bridge
+# create container
+services:
+  # create database for kong
+  kong-database:
+    # set hostname
+    hostname: kong-database
+    container_name: kong-database
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=kong
+      - POSTGRES_DB=kong
+      - POSTGRES_PASSWORD=aldev@2004
+    networks:
+      - kong-net
+    ports:
+      - 5434:5432
+  # migrate database kong
+  kong-migrate:
+    # create this container after kong-database container
+    depends_on:
+      - kong-database
+    container_name: kong-migrate
+    image: kong/kong-gateway:latest
+    networks:
+      - kong-net
+    environment:
+      - KONG_DATABASE=postgres
+      - KONG_PG_HOST=kong-database
+      - KONG_PG_PASSWORD=aldev@2004
+      - KONG_PASSWORD=aldev@2004
+      - KONG_CASSANDRA_CONTACT_POINTS=kong-database
+    command: kong migrations bootstrap
+  # kong gateway service
+  kong-gateway:
+    container_name: kong-gateway
+    # create this container after kong-migrate container
+    depends_on:
+      - kong-migrate
+    image: kong/kong-gateway:latest
+    networks:
+      - kong-net
+    environment:
+      - KONG_DATABASE=postgres
+      - KONG_PG_HOST=kong-database
+      - KONG_PG_USER=kong
+      - KONG_PG_PASSWORD=aldev@2004
+      - KONG_CASSANDRA_CONTACT_POINTS=kong-database
+      - KONG_PROXY_ACCESS_LOG=/dev/stdout
+      - KONG_ADMIN_ACCESS_LOG=/dev/stdout
+      - KONG_PROXY_ERROR_LOG=/dev/stderr
+      - KONG_ADMIN_ERROR_LOG=/dev/stderr
+      - KONG_ADMIN_LISTEN=0.0.0.0:8001
+      # kong manager
+      - KONG_ADMIN_GUI_URL=http://localhost:8002
+    ports:
+      - 8000:8000 # for endpoint route like localhost:8000/<path_api> |  Port ini digunakan sebagai port default untuk interaksi dengan Kong Gateway menggunakan HTTP.
+      - 8443:8443 # Port ini digunakan sebagai port default untuk interaksi dengan Kong Gateway menggunakan HTTPS.
+      - 8001:8001 # Port ini digunakan sebagai port default untuk mengelola Kong Gateway menggunakan HTTP.
+      - 8444:8444 # Port ini digunakan sebagai port default untuk mengelola Kong Gateway menggunakan HTTPS.
+      - 8002:8002 # for kong manager 
+      - 8445:8445 
+      - 8003:8003
+      - 8004:8004
+
+    # docker run kong-gateway
+    # docker run --name kong-gateway --network=host -e KONG_DATABASE=postgres -e KONG_PG_HOST=127.0.0.1 -e KONG_PG_USER=kong -e KONG_PG_PASSWORD=aldev@2004 -e KONG_CASSANDRA_CONTACT_POINTS=127.0.0.1 -e KONG_PROXY_ACCESS_LOG=/dev/stdout -e KONG_ADMIN_ACCESS_LOG=/dev/stdout -e KONG_PROXY_ERROR_LOG=/dev/stderr -e KONG_ADMIN_ERROR_LOG=/dev/stderr -e KONG_ADMIN_LISTEN=0.0.0.0:8001 -e KONG_ADMIN_GUI_URL=http://localhost:8002 -p 8000:8000 -p 8002:8002 -p 8443:8443 -p 8001:8001 -p 8444:8444 -p 8445:8445 -p 8003:8003 -p 8004:8004 kong/kong-gateway:latest 
+
+  #service nya, untuk testing kong
+  film-microservice:
+    container_name: film-microservice
+    depends_on:
+      - kong-gateway
+    image: film-microservice:latest
+    networks:
+      - kong-net
+      #karena nggak bisa set up multiple network 
+      #- postgresql-db -> pake command "docker network connect postgresql-db kedukasi" biar bisa connect ke db
+    environment:
+      - DATABASE_HOST=f4f4f814768d
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=kawah_db
+      - DATABASE_USER=aldev
+      - DATABASE_PASSWORD=aldev@2004
+    ports:
+      - 8080:8080
+
+    # how to use it
+    # 1. docker compose up
+    # 2. docker network connect postgresql-db film-microservice
+    # 3. docker container start postgresql-db
+    # 4. docker container start kedukasi
+    
+    
+    
+  

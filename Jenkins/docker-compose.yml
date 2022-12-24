@@ -1,0 +1,17 @@
+version: '3.8'
+
+networks:
+  jenkins-net:
+    name: jenkins-net
+    driver: bridge
+
+services:
+  jenkins:
+    container_name: jenkins-server
+    image: jenkins/jenkins:lts-jdk11
+    ports:
+      - 8080:8080
+      - 8081:80
+      - 22:22
+    networks:
+      - jenkins-net
