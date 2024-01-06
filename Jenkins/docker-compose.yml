@@ -5,13 +5,19 @@ networks:
     name: jenkins-net
     driver: bridge
 
+volumes:
+  jenkins-data:
+
 services:
   jenkins:
     container_name: jenkins-server
     image: jenkins/jenkins:lts-jdk11
     ports:
-      - 8080:8080
-      - 8081:80
-      - 22:22
+      - 8888:8080
+      - 5000:5000
+      - 2376:2376
+      - 5032:22
     networks:
       - jenkins-net
+    volumes:
+      - jenkins-data:/var/lib/jenkins/data
